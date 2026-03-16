@@ -4,7 +4,7 @@
   "publisher": "Kandeel4411",
   "description": "Explorer filtered to git-changed directories — browse and edit within them",
   "version": "0.0.2",
-  "engines": { "vscode": "^1.85.0" },
+  "engines": { "vscode": "^1.96.0" },
   "categories": ["Other"],
   "activationEvents": ["workspaceContains:.git"],
   "main": "./out/extension.js",
@@ -102,7 +102,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "^1.96.0",
     "typescript": "^5.3.0"
   }
 }
