@@ -37,6 +37,11 @@ local function setup_highlights()
   vim.api.nvim_set_hl(0, "GitScopeTitle", { default = true, link = "Title" })
   vim.api.nvim_set_hl(0, "GitScopeDirectory", { default = true, link = "Directory" })
   vim.api.nvim_set_hl(0, "GitScopeFile", { default = true, link = "Normal" })
+  vim.api.nvim_set_hl(0, "GitScopeFileStaged", { default = true, link = "GitSignsAdd" })
+  vim.api.nvim_set_hl(0, "GitScopeFileUnstaged", { default = true, link = "GitSignsChange" })
+  vim.api.nvim_set_hl(0, "GitScopeFileMixed", { default = true, link = "DiagnosticWarn" })
+  vim.api.nvim_set_hl(0, "GitScopeFileExtension", { default = true, link = "Comment" })
+  vim.api.nvim_set_hl(0, "GitScopeHiddenDirectory", { default = true, link = "Comment" })
   vim.api.nvim_set_hl(0, "GitScopeMarker", { default = true, link = "Comment" })
   vim.api.nvim_set_hl(0, "GitScopeBadgeModified", { default = true, link = "GitSignsChange" })
   vim.api.nvim_set_hl(0, "GitScopeBadgeAdded", { default = true, link = "GitSignsAdd" })
@@ -56,6 +61,22 @@ local function badge_hl_for(status)
     C = "GitScopeBadgeConflict",
   }
   return map[status]
+end
+
+local function file_hl_for(change)
+  if not change then
+    return "GitScopeFile"
+  end
+  if change.staged and change.unstaged then
+    return "GitScopeFileMixed"
+  end
+  if change.staged then
+    return "GitScopeFileStaged"
+  end
+  if change.unstaged then
+    return "GitScopeFileUnstaged"
+  end
+  return "GitScopeFile"
 end
 
 local function join_path(...)
@@ -83,6 +104,18 @@ local function status_to_badge(code)
   return c
 end
 
+local function parse_change(xy)
+  local staged_code = xy:sub(1, 1)
+  local unstaged_code = xy:sub(2, 2)
+  local badge_code = unstaged_code ~= " " and unstaged_code or staged_code
+  local badge = status_to_badge(badge_code)
+  return {
+    badge = badge,
+    staged = staged_code ~= " " and staged_code ~= "?",
+    unstaged = unstaged_code ~= " ",
+  }
+end
+
 local function parse_changed(root)
   local changed = {}
   local roots = {}
@@ -97,7 +130,7 @@ local function parse_changed(root)
         path = parts[#parts]
       end
       local abs = join_path(root, path)
-      changed[abs] = status_to_badge(xy)
+      changed[abs] = parse_change(xy)
       local top = vim.split(path, "/", { plain = true })[1]
       if top and top ~= "" then
         roots[join_path(root, top)] = true
@@ -285,7 +318,8 @@ local function render()
     local indent = string.rep("  ", depth)
     local is_expanded = node.is_dir and (state.expanded[node.path] or has_filter())
     local marker = node.is_dir and (is_expanded and "▾ " or "▸ ") or "  "
-    local badge = state.changed[node.path] and (" [" .. state.changed[node.path] .. "]") or ""
+    local change = state.changed[node.path]
+    local badge = change and (" [" .. change.badge .. "]") or ""
     local line_text = indent .. marker .. node.name .. badge
 
     local matched = not has_filter()
@@ -343,19 +377,33 @@ local function render()
         local name_end = name_start + #node.name
         local badge_start = nil
         local badge_end = nil
-        local status = state.changed[node.path]
+        local change = state.changed[node.path]
+        local status = change and change.badge or nil
         if status then
           local badge = " [" .. status .. "]"
           badge_start = #s - #badge
           badge_end = #s
         end
+        local ext_start = nil
+        local ext_end = nil
+        if not node.is_dir then
+          local dot = node.name:match("^.*()%.")
+          if dot and dot > 1 and dot <= #node.name then
+            ext_start = name_start + dot - 1
+            ext_end = name_end
+          end
+        end
         line_meta[lnum] = {
           is_dir = node.is_dir,
+          name = node.name,
           name_start = name_start,
           name_end = name_end,
+          ext_start = ext_start,
+          ext_end = ext_end,
           badge_start = badge_start,
           badge_end = badge_end,
           status = status,
+          change = change,
         }
       end
     end
@@ -381,11 +429,22 @@ local function render()
       vim.api.nvim_buf_add_highlight(
         state.buf,
         ns,
-        meta.is_dir and "GitScopeDirectory" or "GitScopeFile",
+        meta.is_dir and ((meta.name and meta.name:sub(1, 1) == ".") and "GitScopeHiddenDirectory" or "GitScopeDirectory")
+          or file_hl_for(meta.change),
         lnum - 1,
         math.max((meta.name_start or 1) - 1, 0),
         math.max((meta.name_end or #line), 0)
       )
+      if meta.ext_start and meta.ext_end then
+        vim.api.nvim_buf_add_highlight(
+          state.buf,
+          ns,
+          "GitScopeFileExtension",
+          lnum - 1,
+          meta.ext_start - 1,
+          meta.ext_end
+        )
+      end
       if meta.badge_start and meta.badge_end and meta.status then
         local hl = badge_hl_for(meta.status)
         if hl then
