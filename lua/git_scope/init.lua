@@ -9,6 +9,7 @@ local state = {
   expanded = {},
   line_nodes = {},
   filter_query = "",
+  dir_cache = {},
 }
 
 local defaults = {
@@ -18,8 +19,8 @@ local defaults = {
     collapse_dir = "h",
     new_file = "a",
     new_folder = "A",
-    filter = "r",
-    rename = "m",
+    filter = "/",
+    rename = "r",
     delete = "d",
     refresh = "R",
     close = "q",
@@ -85,6 +86,11 @@ local function is_dir(path)
 end
 
 local function scandir(path)
+  local cached = state.dir_cache[path]
+  if cached then
+    return cached
+  end
+
   local entries = vim.fn.readdir(path)
   local out = {}
   for _, name in ipairs(entries) do
@@ -103,6 +109,7 @@ local function scandir(path)
     end
     return a.name:lower() < b.name:lower()
   end)
+  state.dir_cache[path] = out
   return out
 end
 
@@ -169,28 +176,6 @@ local function has_filter()
   return state.filter_query and state.filter_query ~= ""
 end
 
-local function node_matches_filter(node)
-  if not has_filter() then
-    return true
-  end
-
-  local needle = state.filter_query:lower()
-  if node.name:lower():find(needle, 1, true) then
-    return true
-  end
-
-  if not node.is_dir then
-    return false
-  end
-
-  for _, child in ipairs(scandir(node.path)) do
-    if node_matches_filter(child) then
-      return true
-    end
-  end
-  return false
-end
-
 local function render()
   if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
     return
@@ -199,23 +184,37 @@ local function render()
   local lines = {}
   state.line_nodes = {}
 
-  local function add_node(node, depth)
-    if not node_matches_filter(node) then
-      return
-    end
-
+  local function collect_node_lines(node, depth)
+    local node_lines = {}
+    local node_entries = {}
     local indent = string.rep("  ", depth)
     local is_expanded = node.is_dir and (state.expanded[node.path] or has_filter())
     local marker = node.is_dir and (is_expanded and "▾ " or "▸ ") or "  "
     local badge = state.changed[node.path] and (" [" .. state.changed[node.path] .. "]") or ""
-    table.insert(lines, indent .. marker .. node.name .. badge)
-    state.line_nodes[#lines] = node
+    local line_text = indent .. marker .. node.name .. badge
+
+    local matched = not has_filter()
+    if has_filter() then
+      matched = node.name:lower():find(state.filter_query:lower(), 1, true) ~= nil
+    end
 
     if node.is_dir and is_expanded then
       for _, child in ipairs(scandir(node.path)) do
-        add_node(child, depth + 1)
+        local child_lines, child_nodes, child_matched = collect_node_lines(child, depth + 1)
+        if child_matched then
+          matched = true
+          vim.list_extend(node_lines, child_lines)
+          vim.list_extend(node_entries, child_nodes)
+        end
       end
     end
+
+    if matched then
+      table.insert(node_lines, 1, line_text)
+      table.insert(node_entries, 1, node)
+    end
+
+    return node_lines, node_entries, matched
   end
 
   local title = "Git Scope"
@@ -228,11 +227,18 @@ local function render()
   local changed, roots = parse_changed(state.root)
   state.changed = changed
   for _, path in ipairs(roots) do
-    add_node({
+    local root_node = {
       name = basename(path),
       path = path,
       is_dir = is_dir(path),
-    }, 0)
+    }
+    local root_lines, root_nodes, root_matched = collect_node_lines(root_node, 0)
+    if root_matched then
+      for i = 1, #root_lines do
+        table.insert(lines, root_lines[i])
+        state.line_nodes[#lines] = root_nodes[i]
+      end
+    end
   end
 
   vim.bo[state.buf].modifiable = true
@@ -352,46 +358,14 @@ local function close_win()
     vim.api.nvim_win_close(state.win, true)
   end
   state.filter_query = ""
+  state.dir_cache = {}
   vim.api.nvim_echo({ { "" } }, false, {})
-end
-
-local function set_filter_prompt()
-  local prompt = "Git Scope filter: " .. (state.filter_query or "")
-  vim.api.nvim_echo({ { prompt, "Question" } }, false, {})
 end
 
 local function start_filter()
-  if not state.win or not vim.api.nvim_win_is_valid(state.win) then
-    return
-  end
-
-  state.filter_query = ""
+  local input = vim.fn.input("Git Scope / ", state.filter_query or "")
+  state.filter_query = vim.trim(input or "")
   render()
-  set_filter_prompt()
-
-  while true do
-    local ok, ch = pcall(vim.fn.getcharstr)
-    if not ok then
-      break
-    end
-
-    if ch == "\027" then -- ESC
-      state.filter_query = ""
-      render()
-      break
-    elseif ch == "\r" then -- Enter
-      break
-    elseif ch == "\127" or ch == "\008" then -- Backspace
-      state.filter_query = (state.filter_query or ""):sub(1, -2)
-    elseif #ch == 1 and ch:match("[%g%s]") then
-      state.filter_query = (state.filter_query or "") .. ch
-    end
-
-    render()
-    set_filter_prompt()
-  end
-
-  vim.api.nvim_echo({ { "" } }, false, {})
 end
 
 local function map(lhs, rhs)
@@ -416,6 +390,7 @@ function M.open()
   state.prev_win = vim.api.nvim_get_current_win()
   state.root = vim.loop.cwd()
   state.filter_query = ""
+  state.dir_cache = {}
   ensure_window()
   apply_keymaps()
   render()
