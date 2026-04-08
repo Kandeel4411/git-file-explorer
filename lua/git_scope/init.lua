@@ -23,6 +23,7 @@ local defaults = {
     new_folder = "A",
     filter = "/",
     rename = "r",
+    stage_toggle = "s",
     delete = "d",
     refresh = "R",
     close = "q",
@@ -160,6 +161,34 @@ local function parse_changed(root)
   local root_list = vim.tbl_keys(roots)
   table.sort(root_list)
   return changed, root_list
+end
+
+local function has_staged_changes_for(path)
+  local out = vim.fn.systemlist({
+    "git",
+    "-C",
+    state.root,
+    "status",
+    "--porcelain=1",
+    "--",
+    path,
+  })
+  if vim.v.shell_error ~= 0 then
+    return false
+  end
+  for _, line in ipairs(out) do
+    local xy = line:sub(1, 2)
+    local x = xy:sub(1, 1)
+    if x ~= " " and x ~= "?" then
+      return true
+    end
+  end
+  return false
+end
+
+local function git_run(args)
+  vim.fn.system(args)
+  return vim.v.shell_error == 0
 end
 
 local function load_ignored_paths(root)
@@ -582,12 +611,50 @@ local function delete_item()
   render()
 end
 
+local function clear_caches()
+  state.dir_cache = {}
+  state.ignored_cache = {}
+  state.ignored_paths = load_ignored_paths(state.root)
+end
+
+local function stage_toggle_item()
+  local node = get_node_at_cursor()
+  if not node or node.header then
+    return
+  end
+
+  local rel = to_relpath(node.path)
+  if rel == "." then
+    return
+  end
+
+  local ok
+  if has_staged_changes_for(rel) then
+    ok = git_run({ "git", "-C", state.root, "restore", "--staged", "--", rel })
+    if not ok then
+      ok = git_run({ "git", "-C", state.root, "reset", "HEAD", "--", rel })
+    end
+  else
+    ok = git_run({ "git", "-C", state.root, "add", "--", rel })
+  end
+
+  if not ok then
+    vim.notify("Failed to toggle stage for: " .. rel, vim.log.levels.ERROR)
+    return
+  end
+
+  clear_caches()
+  render()
+end
+
 local function close_win()
   if state.win and vim.api.nvim_win_is_valid(state.win) then
     vim.api.nvim_win_close(state.win, true)
   end
   state.filter_query = ""
   state.dir_cache = {}
+  state.ignored_cache = {}
+  state.ignored_paths = {}
   vim.api.nvim_echo({ { "" } }, false, {})
 end
 
@@ -610,6 +677,7 @@ local function apply_keymaps()
   map(km.new_file, new_file)
   map(km.new_folder, new_folder)
   map(km.rename, rename_item)
+  map(km.stage_toggle, stage_toggle_item)
   map(km.delete, delete_item)
   map(km.refresh, render)
   map(km.close, close_win)

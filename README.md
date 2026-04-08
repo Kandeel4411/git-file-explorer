@@ -62,6 +62,7 @@ When the **Git Scope** tree is focused, these keys are available:
 | `a` | New file |
 | `A` | New folder |
 | `r` | Rename |
+| `s` | Stage / unstage selected file or directory (Neovim) |
 | `d` | Delete |
 | `R` | Refresh |
 | `q` | Close Git Scope window (Neovim) |
@@ -103,9 +104,10 @@ Then run `:Lazy sync` and restart Neovim.
 
 ### Usage
 
-- Run `:GitScope` (or your mapped `<leader>gs`) in any git repo.
+- Run `:GitScope` (or your mapped `gs`) in any git repo.
 - The panel opens in a left split and shows only changed top-level paths.
 - Expand folders to browse all contents, then use the same keybindings table above.
+- Press `s` on a file or directory to stage it; press `s` again to unstage it.
 
 > Note: the Neovim module shells out to `git status --porcelain`, so `git` must be available in your PATH.
 
