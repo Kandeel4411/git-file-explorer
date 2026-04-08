@@ -41,6 +41,9 @@ local function setup_highlights()
   vim.api.nvim_set_hl(0, "GitScopeFileUnstaged", { default = true, link = "GitSignsChange" })
   vim.api.nvim_set_hl(0, "GitScopeFileMixed", { default = true, link = "DiagnosticWarn" })
   vim.api.nvim_set_hl(0, "GitScopeFileExtension", { default = true, link = "Comment" })
+  vim.api.nvim_set_hl(0, "GitScopeFileExtensionStaged", { default = true, link = "String" })
+  vim.api.nvim_set_hl(0, "GitScopeFileExtensionUnstaged", { default = true, link = "Identifier" })
+  vim.api.nvim_set_hl(0, "GitScopeFileExtensionMixed", { default = true, link = "Type" })
   vim.api.nvim_set_hl(0, "GitScopeHiddenDirectory", { default = true, link = "Comment" })
   vim.api.nvim_set_hl(0, "GitScopeMarker", { default = true, link = "Comment" })
   vim.api.nvim_set_hl(0, "GitScopeBadgeModified", { default = true, link = "GitSignsChange" })
@@ -77,6 +80,22 @@ local function file_hl_for(change)
     return "GitScopeFileUnstaged"
   end
   return "GitScopeFile"
+end
+
+local function extension_hl_for(change)
+  if not change then
+    return "GitScopeFileExtension"
+  end
+  if change.staged and change.unstaged then
+    return "GitScopeFileExtensionMixed"
+  end
+  if change.staged then
+    return "GitScopeFileExtensionStaged"
+  end
+  if change.unstaged then
+    return "GitScopeFileExtensionUnstaged"
+  end
+  return "GitScopeFileExtension"
 end
 
 local function join_path(...)
@@ -371,9 +390,10 @@ local function render()
 
         local node = root_nodes[i]
         local s = root_lines[i]
-        local prefix = s:match("^(%s*)") or ""
-        local marker_len = node.is_dir and 4 or 2 -- account for UTF-8 tree marker width
-        local name_start = #prefix + marker_len
+        local name_start = s:find(node.name, 1, true)
+        if not name_start then
+          name_start = 1
+        end
         local name_end = name_start + #node.name
         local badge_start = nil
         local badge_end = nil
@@ -439,7 +459,7 @@ local function render()
         vim.api.nvim_buf_add_highlight(
           state.buf,
           ns,
-          "GitScopeFileExtension",
+          extension_hl_for(meta.change),
           lnum - 1,
           meta.ext_start - 1,
           meta.ext_end
