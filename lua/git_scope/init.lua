@@ -3,10 +3,12 @@ local M = {}
 local state = {
   buf = nil,
   win = nil,
+  prev_win = nil,
   root = nil,
   changed = {},
   expanded = {},
   line_nodes = {},
+  filter_query = "",
 }
 
 local defaults = {
@@ -16,7 +18,8 @@ local defaults = {
     collapse_dir = "h",
     new_file = "a",
     new_folder = "A",
-    rename = "r",
+    filter = "r",
+    rename = "m",
     delete = "d",
     refresh = "R",
     close = "q",
@@ -108,6 +111,36 @@ local function get_node_at_cursor()
   return state.line_nodes[lnum]
 end
 
+local function is_scope_win(win)
+  if not win or not vim.api.nvim_win_is_valid(win) then
+    return false
+  end
+  return state.buf and vim.api.nvim_win_get_buf(win) == state.buf
+end
+
+local function find_editor_win()
+  if state.prev_win and vim.api.nvim_win_is_valid(state.prev_win) and not is_scope_win(state.prev_win) then
+    return state.prev_win
+  end
+  for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if not is_scope_win(win) then
+      return win
+    end
+  end
+  return nil
+end
+
+local function open_path_in_editor(path)
+  local editor_win = find_editor_win()
+  if editor_win then
+    vim.api.nvim_set_current_win(editor_win)
+    vim.cmd("edit " .. vim.fn.fnameescape(path))
+    state.prev_win = editor_win
+    return
+  end
+  vim.cmd("edit " .. vim.fn.fnameescape(path))
+end
+
 local function ensure_window()
   if state.win and vim.api.nvim_win_is_valid(state.win) then
     return
@@ -132,6 +165,32 @@ local function ensure_window()
   vim.wo[state.win].signcolumn = "no"
 end
 
+local function has_filter()
+  return state.filter_query and state.filter_query ~= ""
+end
+
+local function node_matches_filter(node)
+  if not has_filter() then
+    return true
+  end
+
+  local needle = state.filter_query:lower()
+  if node.name:lower():find(needle, 1, true) then
+    return true
+  end
+
+  if not node.is_dir then
+    return false
+  end
+
+  for _, child in ipairs(scandir(node.path)) do
+    if node_matches_filter(child) then
+      return true
+    end
+  end
+  return false
+end
+
 local function render()
   if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
     return
@@ -141,20 +200,29 @@ local function render()
   state.line_nodes = {}
 
   local function add_node(node, depth)
+    if not node_matches_filter(node) then
+      return
+    end
+
     local indent = string.rep("  ", depth)
-    local marker = node.is_dir and (state.expanded[node.path] and "▾ " or "▸ ") or "  "
+    local is_expanded = node.is_dir and (state.expanded[node.path] or has_filter())
+    local marker = node.is_dir and (is_expanded and "▾ " or "▸ ") or "  "
     local badge = state.changed[node.path] and (" [" .. state.changed[node.path] .. "]") or ""
     table.insert(lines, indent .. marker .. node.name .. badge)
     state.line_nodes[#lines] = node
 
-    if node.is_dir and state.expanded[node.path] then
+    if node.is_dir and is_expanded then
       for _, child in ipairs(scandir(node.path)) do
         add_node(child, depth + 1)
       end
     end
   end
 
-  table.insert(lines, "Git Scope")
+  local title = "Git Scope"
+  if has_filter() then
+    title = title .. " [/" .. state.filter_query .. "]"
+  end
+  table.insert(lines, title)
   state.line_nodes[1] = { header = true }
 
   local changed, roots = parse_changed(state.root)
@@ -182,7 +250,7 @@ local function open_node()
     render()
     return
   end
-  vim.cmd("edit " .. vim.fn.fnameescape(node.path))
+  open_path_in_editor(node.path)
 end
 
 local function toggle_dir()
@@ -227,7 +295,7 @@ local function new_file()
     f:close()
   end
   render()
-  vim.cmd("edit " .. vim.fn.fnameescape(path))
+  open_path_in_editor(path)
 end
 
 local function new_folder()
@@ -283,6 +351,47 @@ local function close_win()
   if state.win and vim.api.nvim_win_is_valid(state.win) then
     vim.api.nvim_win_close(state.win, true)
   end
+  state.filter_query = ""
+  vim.api.nvim_echo({ { "" } }, false, {})
+end
+
+local function set_filter_prompt()
+  local prompt = "Git Scope filter: " .. (state.filter_query or "")
+  vim.api.nvim_echo({ { prompt, "Question" } }, false, {})
+end
+
+local function start_filter()
+  if not state.win or not vim.api.nvim_win_is_valid(state.win) then
+    return
+  end
+
+  state.filter_query = ""
+  render()
+  set_filter_prompt()
+
+  while true do
+    local ok, ch = pcall(vim.fn.getcharstr)
+    if not ok then
+      break
+    end
+
+    if ch == "\027" then -- ESC
+      state.filter_query = ""
+      render()
+      break
+    elseif ch == "\r" then -- Enter
+      break
+    elseif ch == "\127" or ch == "\008" then -- Backspace
+      state.filter_query = (state.filter_query or ""):sub(1, -2)
+    elseif #ch == 1 and ch:match("[%g%s]") then
+      state.filter_query = (state.filter_query or "") .. ch
+    end
+
+    render()
+    set_filter_prompt()
+  end
+
+  vim.api.nvim_echo({ { "" } }, false, {})
 end
 
 local function map(lhs, rhs)
@@ -294,6 +403,7 @@ local function apply_keymaps()
   map(km.open, open_node)
   map(km.toggle_dir, toggle_dir)
   map(km.collapse_dir, collapse_dir)
+  map(km.filter, start_filter)
   map(km.new_file, new_file)
   map(km.new_folder, new_folder)
   map(km.rename, rename_item)
@@ -303,7 +413,9 @@ local function apply_keymaps()
 end
 
 function M.open()
+  state.prev_win = vim.api.nvim_get_current_win()
   state.root = vim.loop.cwd()
+  state.filter_query = ""
   ensure_window()
   apply_keymaps()
   render()

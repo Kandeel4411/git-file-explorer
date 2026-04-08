@@ -58,9 +58,10 @@ When the **Git Scope** tree is focused, these keys are available:
 |-----|--------|
 | `Enter` / `l` | Open file / expand folder |
 | `h` | Collapse folder |
+| `r` | Start grep-style filter (Neovim) |
 | `a` | New file |
 | `A` | New folder |
-| `r` | Rename |
+| `m` | Rename (Neovim) |
 | `d` | Delete |
 | `R` | Refresh |
 | `q` | Close Git Scope window (Neovim) |
