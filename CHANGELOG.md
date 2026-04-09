@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.3] - 2026-04-09
+
+### Added
+- Marketplace icon (512x512 PNG)
+- CI: publish to VS Code Marketplace on merge to main
+- CI: run tests on pull requests
+
 ## [0.0.2] - 2026-03-16
 
 ### Changed
