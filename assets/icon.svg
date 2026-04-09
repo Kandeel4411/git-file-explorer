@@ -1,8 +1,46 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-  <!-- folder body -->
-  <path d="M3 8a2 2 0 0 1 2-2h3.17a2 2 0 0 1 1.42.59L10.83 7.8A2 2 0 0 0 12.24 8.4H19a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z"/>
-  <!-- git branch: two nodes connected with a curve -->
-  <circle cx="9" cy="14" r="1.4" fill="currentColor" stroke="none"/>
-  <circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none"/>
-  <path d="M9 14 Q9 12 15 12" stroke-width="1.2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1f36"/>
+      <stop offset="100%" stop-color="#0d1117"/>
+    </linearGradient>
+    <linearGradient id="folderGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4f7ef8"/>
+      <stop offset="100%" stop-color="#3563d4"/>
+    </linearGradient>
+    <linearGradient id="folderFaceGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6b94fa"/>
+      <stop offset="100%" stop-color="#4f7ef8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="128" height="128" rx="22" fill="url(#bg)"/>
+
+  <!-- Folder tab -->
+  <path d="M22 48 Q22 44 26 44 L50 44 Q54 44 56 47 L60 52 L102 52 Q106 52 106 56 L106 96 Q106 100 102 100 L26 100 Q22 100 22 96 Z"
+        fill="url(#folderGrad)" opacity="0.25"/>
+
+  <!-- Folder body -->
+  <path d="M22 52 L22 96 Q22 100 26 100 L102 100 Q106 100 106 96 L106 56 Q106 52 102 52 Z"
+        fill="url(#folderFaceGrad)" opacity="0.9"/>
+
+  <!-- Folder top flap -->
+  <path d="M22 52 L56 52 L60 48 Q62 44 66 44 L50 44 Q44 44 40 44 L26 44 Q22 44 22 48 Z"
+        fill="#4f7ef8" opacity="0.6"/>
+
+  <!-- Git branch: vertical stem -->
+  <line x1="56" y1="70" x2="56" y2="88" stroke="#f0f4ff" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Git branch: curve to second node -->
+  <path d="M56 70 C56 63 72 63 72 70" stroke="#f0f4ff" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+
+  <!-- Commit node: main -->
+  <circle cx="56" cy="70" r="5" fill="#f9c84a" stroke="#ffeaa0" stroke-width="1.5"/>
+
+  <!-- Commit node: branch -->
+  <circle cx="72" cy="70" r="5" fill="#f9c84a" stroke="#ffeaa0" stroke-width="1.5"/>
+
+  <!-- Commit node: bottom -->
+  <circle cx="56" cy="88" r="5" fill="#f9c84a" stroke="#ffeaa0" stroke-width="1.5"/>
 </svg>
