@@ -1,6 +1,6 @@
-# Git File Explorer
+# Git Scope Explorer
 
-Git File Explorer is a focused file explorer for changed files.
+Git Scope Explorer is a focused file explorer for changed files.
 
 It shows only directories and files touched by git status, so you can work inside active paths without scanning the full project tree.
 
@@ -35,14 +35,14 @@ From the tree view context menu:
 ## Getting Started in VS Code
 
 1. Open a git repository in VS Code.
-2. Select the **Git File Explorer** icon in the activity bar.
+2. Select the **Git Scope Explorer** icon in the activity bar.
 3. Use the **Changed Directories** tree to browse changed paths.
 
 Activation is automatic when a `.git` directory exists in the workspace.
 
 ## Keybindings
 
-When the Git File Explorer tree has focus:
+When the Git Scope Explorer tree has focus:
 
 - `Enter` or `l`: Open file or expand folder
 - `h`: Collapse folder
@@ -53,25 +53,25 @@ When the Git File Explorer tree has focus:
 - `s`: Stage or unstage file or directory in Neovim
 - `d`: Delete
 - `R`: Refresh
-- `q`: Close Git File Explorer window in Neovim
+- `q`: Close Git Scope Explorer window in Neovim
 
 ## LazyVim and Neovim
 
-Create `~/.config/nvim/lua/plugins/git-file-explorer.lua`:
+Create `~/.config/nvim/lua/plugins/git-scope-explorer.lua`:
 
 ```lua
 return {
   {
     "Kandeel4411/git-file-explorer",
     lazy = true,
-    cmd = { "GitFileExplorer" },
+    cmd = { "GitScope" },
     keys = {
       {
         "gs",
         function()
-          vim.cmd("GitFileExplorer")
+          vim.cmd("GitScope")
         end,
-        desc = "Git File Explorer",
+        desc = "Git Scope Explorer",
         mode = "n",
       },
     },
@@ -86,7 +86,7 @@ Then run `:Lazy sync` and restart Neovim.
 
 Usage notes:
 
-- Run `:GitFileExplorer` in any git repo.
+- Run `:GitScope` in any git repo.
 - The panel opens in a left split.
 - Use `s` to stage a file or directory.
 - Use `s` again to unstage it.

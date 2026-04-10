@@ -398,7 +398,7 @@ local function render()
     return node_lines, node_entries, matched
   end
 
-  local title = "Git File Explorer"
+  local title = "Git Scope Explorer"
   if has_filter() then
     title = title .. " [/" .. state.filter_query .. "]"
   end
@@ -682,7 +682,7 @@ local function close_win()
 end
 
 local function start_filter()
-  local input = vim.fn.input("Git File Explorer / ", state.filter_query or "")
+  local input = vim.fn.input("Git Scope Explorer / ", state.filter_query or "")
   state.filter_query = vim.trim(input or "")
   render()
 end

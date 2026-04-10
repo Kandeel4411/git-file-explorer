@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for contributing to Git File Explorer.
+Thanks for contributing to Git Scope Explorer.
 
 ## Local setup
 
