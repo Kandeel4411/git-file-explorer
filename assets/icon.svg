@@ -1,46 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1a1f36"/>
-      <stop offset="100%" stop-color="#0d1117"/>
-    </linearGradient>
-    <linearGradient id="folderGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#4f7ef8"/>
-      <stop offset="100%" stop-color="#3563d4"/>
-    </linearGradient>
-    <linearGradient id="folderFaceGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#6b94fa"/>
-      <stop offset="100%" stop-color="#4f7ef8"/>
-    </linearGradient>
-  </defs>
-
-  <!-- Background rounded square -->
-  <rect width="128" height="128" rx="22" fill="url(#bg)"/>
-
   <!-- Folder tab -->
   <path d="M22 48 Q22 44 26 44 L50 44 Q54 44 56 47 L60 52 L102 52 Q106 52 106 56 L106 96 Q106 100 102 100 L26 100 Q22 100 22 96 Z"
-        fill="url(#folderGrad)" opacity="0.25"/>
+        fill="currentColor" opacity="0.4"/>
 
   <!-- Folder body -->
   <path d="M22 52 L22 96 Q22 100 26 100 L102 100 Q106 100 106 96 L106 56 Q106 52 102 52 Z"
-        fill="url(#folderFaceGrad)" opacity="0.9"/>
+        fill="currentColor"/>
 
   <!-- Folder top flap -->
   <path d="M22 52 L56 52 L60 48 Q62 44 66 44 L50 44 Q44 44 40 44 L26 44 Q22 44 22 48 Z"
-        fill="#4f7ef8" opacity="0.6"/>
+        fill="currentColor" opacity="0.7"/>
 
   <!-- Git branch: vertical stem -->
-  <line x1="56" y1="70" x2="56" y2="88" stroke="#f0f4ff" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="56" y1="70" x2="56" y2="88" stroke-width="3.5" stroke-linecap="round" stroke="currentColor"/>
 
   <!-- Git branch: curve to second node -->
-  <path d="M56 70 C56 63 72 63 72 70" stroke="#f0f4ff" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <path d="M56 70 C56 63 72 63 72 70" stroke-width="3.5" stroke-linecap="round" fill="none" stroke="currentColor"/>
 
   <!-- Commit node: main -->
-  <circle cx="56" cy="70" r="5" fill="#f9c84a" stroke="#ffeaa0" stroke-width="1.5"/>
+  <circle cx="56" cy="70" r="5" fill="currentColor"/>
 
   <!-- Commit node: branch -->
-  <circle cx="72" cy="70" r="5" fill="#f9c84a" stroke="#ffeaa0" stroke-width="1.5"/>
+  <circle cx="72" cy="70" r="5" fill="currentColor"/>
 
   <!-- Commit node: bottom -->
-  <circle cx="56" cy="88" r="5" fill="#f9c84a" stroke="#ffeaa0" stroke-width="1.5"/>
+  <circle cx="56" cy="88" r="5" fill="currentColor"/>
 </svg>

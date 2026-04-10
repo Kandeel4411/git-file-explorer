@@ -9,7 +9,8 @@
   },
   "icon": "assets/icon.png",
   "categories": [
-    "Other"
+    "SCM Providers",
+    "Visualization"
   ],
   "activationEvents": [
     "workspaceContains:.git"
