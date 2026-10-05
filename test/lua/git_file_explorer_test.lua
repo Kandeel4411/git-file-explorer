@@ -270,6 +270,57 @@ add_test("parse_change computes badge and stage flags", function()
   assert_true(untracked.unstaged)
 end)
 
+add_test("parse_change badges merge-conflict states as C", function()
+  for _, xy in ipairs({ "DD", "AU", "UD", "UA", "DU", "AA", "UU" }) do
+    assert_eq(t.parse_change(xy).badge, "C", xy .. " should badge as C")
+  end
+end)
+
+add_test("hide-unchanged visibility rules", function()
+  reset_runtime_state()
+  mod.setup({ show_unchanged = false })
+  t.set_state({
+    root = "/repo",
+    filter_query = "",
+    changed = { ["/repo/src/a.ts"] = { badge = "M" } },
+  })
+  assert_true(t.should_show_node({ name = "a.ts", path = "/repo/src/a.ts", is_dir = false }), "changed file should show")
+  assert_true(not t.should_show_node({ name = "b.ts", path = "/repo/src/b.ts", is_dir = false }), "unchanged file should hide")
+  assert_true(t.should_show_node({ name = "src", path = "/repo/src", is_dir = true }), "dir with changed descendant should show")
+  assert_true(not t.should_show_node({ name = "docs", path = "/repo/docs", is_dir = true }), "dir without changed descendant should hide")
+  assert_true(t.has_changed_descendant("/repo/src"), "src has changed descendant")
+  assert_true(not t.has_changed_descendant("/repo/docs"), "docs has no changed descendant")
+end)
+
+add_test("show_unchanged shows every node", function()
+  reset_runtime_state()
+  mod.setup({ show_unchanged = true })
+  t.set_state({ root = "/repo", filter_query = "", changed = {} })
+  assert_true(t.should_show_node({ name = "b.ts", path = "/repo/src/b.ts", is_dir = false }), "all nodes visible when show_unchanged")
+end)
+
+add_test("toggle_unchanged flips config", function()
+  reset_runtime_state()
+  mod.setup({ show_unchanged = false })
+  assert_eq(t.get_config().show_unchanged, false)
+  t.toggle_unchanged()
+  assert_eq(t.get_config().show_unchanged, true)
+  t.toggle_unchanged()
+  assert_eq(t.get_config().show_unchanged, false)
+end)
+
+add_test("default toggle_unchanged keymap applied", function()
+  reset_runtime_state()
+  mod.setup()
+  t.set_state({ win = -1, buf = -1 })
+  mod.open()
+  local seen = {}
+  for _, entry in ipairs(mapped_keys) do
+    seen[entry.lhs] = true
+  end
+  assert_true(seen["H"], "default toggle_unchanged keymap not applied")
+end)
+
 add_test("highlight selectors map status and change state", function()
   assert_eq(t.badge_hl_for("D"), "GitScopeBadgeDeleted")
   assert_eq(t.file_hl_for({ staged = true, unstaged = false }), "GitScopeFileStaged")

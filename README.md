@@ -1,61 +1,106 @@
 # Git Scope Explorer
 
-Git Scope Explorer is a focused file explorer for changed files.
+> A file explorer scoped to what you're actually working on — only the directories and files touched by `git status`.
 
-It shows only directories and files touched by git status, so you can work inside active paths without scanning the full project tree.
+[![Version](https://vsmarketplacebadges.dev/version-short/Kandeel4411.git-scope-explorer.png)](https://marketplace.visualstudio.com/items?itemName=Kandeel4411.git-scope-explorer)
+[![Installs](https://vsmarketplacebadges.dev/installs-short/Kandeel4411.git-scope-explorer.png)](https://marketplace.visualstudio.com/items?itemName=Kandeel4411.git-scope-explorer)
+[![Rating](https://vsmarketplacebadges.dev/rating-short/Kandeel4411.git-scope-explorer.png)](https://marketplace.visualstudio.com/items?itemName=Kandeel4411.git-scope-explorer&ssr=false#review-details)
+[![Open VSX](https://img.shields.io/open-vsx/v/Kandeel4411/git-scope-explorer?label=Open%20VSX)](https://open-vsx.org/extension/Kandeel4411/git-scope-explorer)
+[![CI](https://github.com/Kandeel4411/git-file-explorer/actions/workflows/release.yml/badge.svg)](https://github.com/Kandeel4411/git-file-explorer/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/github/license/Kandeel4411/git-file-explorer)](LICENSE)
 
-## Highlights
+The default file explorer shows your whole project. Git Scope Explorer shows only the
+paths with changes, so you can browse, open, and edit inside your active work without
+scrolling past hundreds of untouched files. It works in VS Code and Cursor, and ships
+with a standalone Neovim module.
 
-- Dedicated activity bar view called **Changed Directories**
-- Git status badges on files and roots
-- Quick file actions from tree context menu
-- Automatic refresh when git index or filesystem state changes
-- Neovim module at `lua/git_file_explorer/init.lua`
 
-## Status Badges
+![Git Scope Explorer demo](https://raw.githubusercontent.com/Kandeel4411/git-file-explorer/main/assets/demo.gif)
 
-- `M`: Modified
-- `A`: Added
-- `D`: Deleted
-- `U`: Untracked
-- `R`: Renamed
-- `C`: Conflict
 
-Hovering an item shows staged and unstaged status details.
+## Features
 
-## File Actions
+- **Changed-only tree** — a dedicated **Git Scope Explorer** activity bar view listing
+  just the top-level directories and files with git changes.
+- **Git status badges** — every entry shows its state with native theme colors.
+- **Hide unchanged files** — focus a changed directory to collapse it to only the files
+  with changes; restore the full tree at any time.
+- **Inline file actions** — New File, New Folder, Rename, and Delete (with confirmation)
+  from the tree context menu.
+- **Drag and drop** — move files and folders within the tree.
+- **Automatic refresh** — the view updates when the git index changes (stage, unstage,
+  commit) or when files are created or deleted.
+- **Neovim module** — the same changed-scoped explorer for Neovim at
+  `lua/git_file_explorer/init.lua`.
 
-From the tree view context menu:
+### Status badges
 
-- **New File**
-- **New Folder**
-- **Rename**
-- **Delete** with confirmation
+| Badge | Meaning   |
+| ----- | --------- |
+| `M`   | Modified  |
+| `A`   | Added     |
+| `D`   | Deleted   |
+| `U`   | Untracked |
+| `R`   | Renamed   |
+| `C`   | Conflict  |
 
-## Getting Started in VS Code
+Hovering an item shows the staged and unstaged status detail.
 
-1. Open a git repository in VS Code.
-2. Select the **Git Scope Explorer** icon in the activity bar.
-3. Use the **Changed Directories** tree to browse changed paths.
+## Installation
+
+### VS Code / Cursor
+
+Install from the marketplace:
+
+- **VS Code Marketplace** — [Git Scope Explorer](https://marketplace.visualstudio.com/items?itemName=Kandeel4411.git-scope-explorer)
+- **Open VSX (Cursor)** — [Git Scope Explorer](https://open-vsx.org/extension/Kandeel4411/git-scope-explorer)
+
+Or from inside the editor: open the Extensions view, search for **Git Scope Explorer**,
+and click **Install**.
+
+#### From a VSIX
+
+```bash
+# Download the latest .vsix from the releases page, then:
+code --install-extension git-scope-explorer-*.vsix
+```
+
+A helper script `install-latest.sh` is included to fetch and install the latest release.
+
+## Usage (VS Code)
+
+1. Open a git repository.
+2. Click the **Git Scope Explorer** icon in the activity bar.
+3. Browse the **Changed Directories** tree.
 
 Activation is automatic when a `.git` directory exists in the workspace.
 
-## Keybindings
+- Click a file to open it.
+- Right-click an entry for **New File**, **New Folder**, **Rename**, and **Delete**.
+- Right-click a changed directory and choose **Hide Unchanged Files** to focus it;
+  choose **Show All Files** to restore the full tree.
+- Drag entries within the tree to move them.
 
-When the Git Scope Explorer tree has focus:
+### Keybindings (VS Code)
 
-- `Enter` or `l`: Open file or expand folder
-- `h`: Collapse folder
-- `/`: Start filter input in Neovim
-- `a`: New file
-- `A`: New folder
-- `r`: Rename
-- `s`: Stage or unstage file or directory in Neovim
-- `d`: Delete
-- `R`: Refresh
-- `q`: Close Git Scope Explorer window in Neovim
+Active when the Git Scope Explorer tree has focus:
 
-## LazyVim and Neovim
+| Key       | Action     |
+| --------- | ---------- |
+| `a`       | New file   |
+| `Shift+A` | New folder |
+| `r`       | Rename     |
+| `d`       | Delete     |
+| `Shift+R` | Refresh    |
+
+File opening and folder expand/collapse use the editor's native tree controls
+(`Enter`, arrow keys, click).
+
+## Neovim
+
+The Neovim module provides the same changed-scoped explorer, independent of VS Code.
+
+### Install (lazy.nvim)
 
 Create `~/.config/nvim/lua/plugins/git-scope-explorer.lua`:
 
@@ -84,33 +129,66 @@ return {
 
 Then run `:Lazy sync` and restart Neovim.
 
-Usage notes:
+### Usage
 
-- Run `:GitScope` in any git repo.
-- The panel opens in a left split.
-- Use `s` to stage a file or directory.
-- Use `s` again to unstage it.
+- Run `:GitScope` in any git repo. The panel opens in a left split; run it again to close.
+- Press `s` on a file or directory to stage it, and `s` again to unstage.
+
+### Keymaps (Neovim)
+
+| Key         | Action                     |
+| ----------- | -------------------------- |
+| `<CR>`      | Open file / toggle folder  |
+| `l`         | Expand folder              |
+| `h`         | Collapse folder            |
+| `/`         | Filter by name             |
+| `a`         | New file                   |
+| `A`         | New folder                 |
+| `r`         | Rename                     |
+| `s`         | Stage / unstage            |
+| `d`         | Delete                     |
+| `R`         | Refresh                    |
+| `H`         | Toggle unchanged files     |
+| `q`         | Close the window           |
+
+By default the Neovim explorer hides unchanged files, showing only git-changed files
+and the directories that contain them (the title shows `[changed]`). Press `H` to toggle
+the full tree on and off.
+
+Keymaps and behavior are configurable — pass options to `setup()`:
+
+```lua
+require("git_file_explorer").setup({
+  show_unchanged = false, -- default; set true to show the whole tree
+  keymaps = {
+    toggle_unchanged = "H",
+    -- ...override any other key
+  },
+})
+```
 
 ## Requirements
 
-- VS Code `1.85.0` or later
-- Git available in your `PATH`
+- VS Code `1.85.0` or later (also works in Cursor)
+- Git available on your `PATH`
+- Neovim module: Neovim `0.9` or later
 
 ## Development
 
 ```bash
 npm install
-npm run compile
-npm run watch
-npm run test
-npm run package
+npm run compile      # one-off build
+npm run watch        # rebuild on change
+npm test             # run Lua + JS tests
+npm run package      # build the .vsix
 ```
 
 Press `F5` in VS Code to launch an Extension Development Host.
 
 ## Contributing
 
-For contribution workflow and hook setup, see `CONTRIBUTING.md`.
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and
+hook setup, and the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 Quick start:
 
@@ -121,6 +199,10 @@ npm test
 pre-commit run -a
 ```
 
+## Security
+
+To report a vulnerability, see [SECURITY.md](SECURITY.md).
+
 ## License
 
-MIT
+[MIT](LICENSE)

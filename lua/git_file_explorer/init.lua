@@ -15,6 +15,8 @@ local state = {
 }
 
 local defaults = {
+  -- When false, only git-changed files (and directories containing them) are shown.
+  show_unchanged = false,
   keymaps = {
     open = "<CR>",
     toggle_dir = "l",
@@ -26,6 +28,7 @@ local defaults = {
     stage_toggle = "s",
     delete = "d",
     refresh = "R",
+    toggle_unchanged = "H",
     close = "q",
   },
 }
@@ -127,8 +130,18 @@ end
 local function parse_change(xy)
   local staged_code = xy:sub(1, 1)
   local unstaged_code = xy:sub(2, 2)
-  local badge_code = unstaged_code ~= " " and unstaged_code or staged_code
-  local badge = status_to_badge(badge_code)
+  -- Merge-conflict states (git porcelain v1): DD AU UD UA DU AA UU.
+  local is_conflict = staged_code == "U"
+    or unstaged_code == "U"
+    or (staged_code == "A" and unstaged_code == "A")
+    or (staged_code == "D" and unstaged_code == "D")
+  local badge
+  if is_conflict then
+    badge = "C"
+  else
+    local badge_code = unstaged_code ~= " " and unstaged_code or staged_code
+    badge = status_to_badge(badge_code)
+  end
   return {
     badge = badge,
     staged = staged_code ~= " " and staged_code ~= "?",
@@ -355,6 +368,32 @@ local function has_filter()
   return state.filter_query and state.filter_query ~= ""
 end
 
+local function has_changed_descendant(path)
+  local prefix = path .. "/"
+  for p in pairs(state.changed) do
+    if p:sub(1, #prefix) == prefix then
+      return true
+    end
+  end
+  return false
+end
+
+-- Whether a node is visible on its own merits (ignoring visible children).
+-- A filter matches by name; otherwise, when unchanged files are hidden, only
+-- changed files and directories containing a changed descendant are shown.
+local function should_show_node(node)
+  if has_filter() then
+    return node.name:lower():find(state.filter_query:lower(), 1, true) ~= nil
+  end
+  if not config.show_unchanged then
+    if state.changed[node.path] then
+      return true
+    end
+    return node.is_dir and has_changed_descendant(node.path)
+  end
+  return true
+end
+
 local function render()
   if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
     return
@@ -374,10 +413,7 @@ local function render()
     local badge = change and (" [" .. change.badge .. "]") or ""
     local line_text = indent .. marker .. node.name .. badge
 
-    local matched = not has_filter()
-    if has_filter() then
-      matched = node.name:lower():find(state.filter_query:lower(), 1, true) ~= nil
-    end
+    local matched = should_show_node(node)
 
     if node.is_dir and is_expanded then
       for _, child in ipairs(scandir(node.path)) do
@@ -399,6 +435,9 @@ local function render()
   end
 
   local title = "Git Scope Explorer"
+  if not config.show_unchanged then
+    title = title .. " [changed]"
+  end
   if has_filter() then
     title = title .. " [/" .. state.filter_query .. "]"
   end
@@ -687,6 +726,11 @@ local function start_filter()
   render()
 end
 
+local function toggle_unchanged()
+  config.show_unchanged = not config.show_unchanged
+  render()
+end
+
 local function map(lhs, rhs)
   vim.keymap.set("n", lhs, rhs, { buffer = state.buf, silent = true, nowait = true })
 end
@@ -705,6 +749,7 @@ local function apply_keymaps()
   map(km.stage_toggle, stage_toggle_item)
   map(km.delete, delete_item)
   map(km.refresh, render)
+  map(km.toggle_unchanged, toggle_unchanged)
   map(km.close, close_win)
 end
 
@@ -745,6 +790,12 @@ M._test = {
   parse_change = parse_change,
   to_relpath = to_relpath,
   is_git_ignored = is_git_ignored,
+  has_changed_descendant = has_changed_descendant,
+  should_show_node = should_show_node,
+  toggle_unchanged = toggle_unchanged,
+  get_config = function()
+    return config
+  end,
   set_state = function(partial)
     for k, v in pairs(partial or {}) do
       state[k] = v

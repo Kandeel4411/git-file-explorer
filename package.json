@@ -2,20 +2,39 @@
   "name": "git-scope-explorer",
   "displayName": "Git Scope Explorer",
   "publisher": "Kandeel4411",
-  "description": "Explorer filtered to git-changed directories \u2014 browse and edit within them",
-  "version": "0.0.8",
+  "description": "Explorer filtered to git-changed directories — browse and edit within them",
+  "version": "0.0.9",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
   },
   "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
   "categories": [
     "SCM Providers",
     "Visualization"
+  ],
+  "keywords": [
+    "git",
+    "scm",
+    "explorer",
+    "changed files",
+    "diff",
+    "file tree",
+    "neovim",
+    "cursor"
   ],
   "repository": {
     "type": "git",
     "url": "https://github.com/Kandeel4411/git-file-explorer.git"
   },
+  "bugs": {
+    "url": "https://github.com/Kandeel4411/git-file-explorer/issues"
+  },
+  "homepage": "https://github.com/Kandeel4411/git-file-explorer#readme",
   "activationEvents": [
     "workspaceContains:.git"
   ],

@@ -32,6 +32,27 @@ describe('gitStatus', () => {
     assert.equal(changes[5].badge, 'U');
   });
 
+  it('badges all merge-conflict states as C', () => {
+    const gitStatus = loadGitStatus(() =>
+      [
+        'DD src/both-deleted.ts',
+        'AU src/added-by-us.ts',
+        'UD src/deleted-by-them.ts',
+        'UA src/added-by-them.ts',
+        'DU src/deleted-by-us.ts',
+        'AA src/both-added.ts',
+        'UU src/both-modified.ts',
+      ].join('\n'),
+    );
+
+    const changes = gitStatus.getGitChanges('/repo');
+    assert.equal(changes.length, 7);
+    for (const change of changes) {
+      assert.equal(change.badge, 'C', `${change.x}${change.y} should badge as C`);
+      assert.equal(change.color, 'conflict');
+    }
+  });
+
   it('returns empty list when git command fails', () => {
     const gitStatus = loadGitStatus(() => {
       throw new Error('git not available');

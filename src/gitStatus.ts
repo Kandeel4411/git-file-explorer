@@ -35,9 +35,17 @@ export function getGitChanges(repoRoot: string): GitChange[] {
       let badge = (x !== ' ' && x !== '?' ? x : y).trim() || '?';
       let color: GitChange['color'] = 'modified';
 
+      // Merge-conflict states (git porcelain v1): DD AU UD UA DU AA UU.
+      // Must be checked before A/D so they are not misclassified as added/deleted.
+      const isConflict =
+        x === 'U' || y === 'U' || (x === 'A' && y === 'A') || (x === 'D' && y === 'D');
+
       if (x === '?' && y === '?') {
         badge = 'U';
         color = 'untracked';
+      } else if (isConflict) {
+        badge = 'C';
+        color = 'conflict';
       } else if (x === 'A' || y === 'A') {
         badge = 'A';
         color = 'added';
@@ -47,9 +55,6 @@ export function getGitChanges(repoRoot: string): GitChange[] {
       } else if (x === 'R' || y === 'R') {
         badge = 'R';
         color = 'renamed';
-      } else if ((x === 'U' || y === 'U') || (x === 'A' && y === 'A') || (x === 'D' && y === 'D')) {
-        badge = 'C';
-        color = 'conflict';
       }
 
       changes.push({ x, y, filePath, badge, color });
