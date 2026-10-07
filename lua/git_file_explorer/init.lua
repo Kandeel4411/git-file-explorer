@@ -451,13 +451,30 @@ local function should_show_node(node)
   return true
 end
 
--- Directories auto-expand while filtering or while unchanged files are hidden
--- (changed-only view), so the changed paths are visible without manual expansion.
+-- A directory is expanded when the user expanded it (or seeded on open), or while
+-- filtering. Respects an explicit collapse so <CR>/l/h toggles work.
 local function is_node_expanded(node)
   if not node.is_dir then
     return false
   end
-  return state.expanded[node.path] == true or has_filter() or not config.show_unchanged
+  return state.expanded[node.path] == true or has_filter()
+end
+
+-- Seeds the ancestor directories of every changed path as expanded, so opening the
+-- window reveals the changed files without manual expansion. Called once on open;
+-- afterwards the user can collapse/expand freely.
+local function seed_expanded(changed)
+  for abs in pairs(changed) do
+    local dir = vim.fs.dirname(abs)
+    while dir and dir ~= state.root and dir ~= "/" and dir ~= "." do
+      state.expanded[dir] = true
+      local parent = vim.fs.dirname(dir)
+      if parent == dir then
+        break
+      end
+      dir = parent
+    end
+  end
 end
 
 local function render()
@@ -846,7 +863,10 @@ function M.open()
   state.filter_query = ""
   state.dir_cache = {}
   state.ignored_cache = {}
+  state.expanded = {}
   state.ignored_paths = load_ignored_paths(state.root)
+  state.changed = parse_changed(state.root)
+  seed_expanded(state.changed)
   ensure_window()
   apply_keymaps()
   render()
@@ -875,6 +895,7 @@ M._test = {
   has_changed_descendant = has_changed_descendant,
   should_show_node = should_show_node,
   is_node_expanded = is_node_expanded,
+  seed_expanded = seed_expanded,
   toggle_unchanged = toggle_unchanged,
   git_show_head = git_show_head,
   open_diff_in_editor = open_diff_in_editor,

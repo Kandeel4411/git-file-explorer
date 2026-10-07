@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-10-07
+
+### Fixed
+- Neovim: collapsing and expanding folders (`h`, `l`, `Enter`) had no effect because
+  directories were force-expanded. Directories are now expanded once when the window
+  opens, and the toggles are respected afterwards.
+
 ## [0.1.0] - 2026-10-07
 
 ### Added
@@ -14,8 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   than stacking new split windows.
 
 ### Changed
-- Neovim: in the changed-only view (unchanged files hidden), directories now auto-expand
-  so changed files are visible without manually expanding each folder.
+- Neovim: the changed-only view (unchanged files hidden) expands directories when the
+  window opens so changed files are visible without manually expanding each folder.
 
 ## [0.0.9] - 2026-10-05
 

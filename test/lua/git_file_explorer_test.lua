@@ -296,23 +296,37 @@ add_test("hide-unchanged visibility rules", function()
   assert_true(not t.has_changed_descendant("/repo/docs"), "docs has no changed descendant")
 end)
 
-add_test("directories auto-expand when unchanged files are hidden", function()
+add_test("opening seeds ancestor directories of changed files as expanded", function()
   reset_runtime_state()
-  mod.setup({ show_unchanged = false })
-  t.set_state({ filter_query = "", expanded = {} })
-  local dir = { name = "src", path = "/repo/src", is_dir = true }
-  assert_true(t.is_node_expanded(dir), "dir should auto-expand in changed-only mode")
-
-  local file = { name = "a.ts", path = "/repo/src/a.ts", is_dir = false }
-  assert_true(not t.is_node_expanded(file), "files are never expanded")
+  mod.setup()
+  t.set_state({ root = "/repo", filter_query = "", expanded = {} })
+  t.seed_expanded({
+    ["/repo/src/sub/a.ts"] = { badge = "M" },
+    ["/repo/README.md"] = { badge = "M" },
+  })
+  assert_true(t.is_node_expanded({ path = "/repo/src", is_dir = true }), "src seeded expanded")
+  assert_true(t.is_node_expanded({ path = "/repo/src/sub", is_dir = true }), "src/sub seeded expanded")
+  assert_true(not t.is_node_expanded({ path = "/repo/docs", is_dir = true }), "unrelated dir stays collapsed")
+  assert_true(not t.is_node_expanded({ path = "/repo/src/a.ts", is_dir = false }), "files are never expanded")
 end)
 
-add_test("directories stay collapsed by default in full-tree mode", function()
+add_test("collapse is respected and not overridden by the mode", function()
+  reset_runtime_state()
+  mod.setup({ show_unchanged = false })
+  t.set_state({ root = "/repo", filter_query = "", expanded = {} })
+  t.seed_expanded({ ["/repo/src/a.ts"] = { badge = "M" } })
+  local dir = { path = "/repo/src", is_dir = true }
+  assert_true(t.is_node_expanded(dir), "seeded expanded on open")
+  t.set_state({ expanded = { ["/repo/src"] = false } })
+  assert_true(not t.is_node_expanded(dir), "collapsing a folder is respected")
+end)
+
+add_test("directories stay collapsed when not seeded", function()
   reset_runtime_state()
   mod.setup({ show_unchanged = true })
-  t.set_state({ filter_query = "", expanded = {} })
-  local dir = { name = "src", path = "/repo/src", is_dir = true }
-  assert_true(not t.is_node_expanded(dir), "dir collapsed by default when showing full tree")
+  t.set_state({ root = "/repo", filter_query = "", expanded = {} })
+  local dir = { path = "/repo/src", is_dir = true }
+  assert_true(not t.is_node_expanded(dir), "unseeded dir collapsed by default")
   t.set_state({ expanded = { ["/repo/src"] = true } })
   assert_true(t.is_node_expanded(dir), "explicitly expanded dir is expanded")
 end)

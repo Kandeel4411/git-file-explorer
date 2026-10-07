@@ -153,8 +153,9 @@ Then run `:Lazy sync` and restart Neovim.
 | `q`         | Close the window           |
 
 By default the Neovim explorer hides unchanged files, showing only git-changed files
-and the directories that contain them (the title shows `[changed]`). In this view
-directories auto-expand, so every changed file is visible without drilling in. Press `H`
+and the directories that contain them (the title shows `[changed]`). When the window
+opens, directories that contain changes start expanded so changed files are visible
+immediately; collapse or expand them afterwards with `h`, `l`, or `Enter`. Press `H`
 to toggle the full tree on and off.
 
 ### Diff view (experimental)
