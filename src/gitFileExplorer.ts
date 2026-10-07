@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { getChangedRoots, buildChangedPathSet, getIgnoredPaths, GitChange } from './gitStatus';
+import { buildChangedPathSet, getIgnoredPaths, GitChange } from './gitStatus';
 
 export class GitNode extends vscode.TreeItem {
   constructor(
@@ -56,17 +56,18 @@ export class GitFileExplorerProvider
 
   constructor() {
     this.workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
-    this.loadChangedPaths();
+    // Load asynchronously; the tree renders from the cache and updates once ready.
+    void this.refresh();
   }
 
-  private loadChangedPaths() {
+  private async loadChangedPaths(): Promise<void> {
     if (!this.workspaceRoot) return;
-    this.changedPaths = buildChangedPathSet(this.workspaceRoot);
-    this.ignoredPaths = getIgnoredPaths(this.workspaceRoot);
+    this.changedPaths = await buildChangedPathSet(this.workspaceRoot);
+    this.ignoredPaths = await getIgnoredPaths(this.workspaceRoot);
   }
 
-  refresh(): void {
-    this.loadChangedPaths();
+  async refresh(): Promise<void> {
+    await this.loadChangedPaths();
     this._onDidChangeTreeData.fire(undefined);
     this._onDidChangeFileDecorations.fire([]);
   }
@@ -105,8 +106,21 @@ export class GitFileExplorerProvider
     return this.getDirectoryChildren(element.fsPath);
   }
 
+  /** Top-level changed entries, derived from the cached change set (no git call). */
+  private getChangedRoots(): Map<string, GitChange> {
+    const roots = new Map<string, GitChange>();
+    for (const [absPath, change] of this.changedPaths.entries()) {
+      const rel = path.relative(this.workspaceRoot, absPath).replace(/\\/g, '/');
+      const root = rel.split('/')[0];
+      if (root && !roots.has(root)) {
+        roots.set(root, change);
+      }
+    }
+    return roots;
+  }
+
   private getRootNodes(): GitNode[] {
-    const roots = getChangedRoots(this.workspaceRoot);
+    const roots = this.getChangedRoots();
     return Array.from(roots.entries())
       .map(([name, change]) => {
         const fullPath = path.join(this.workspaceRoot, name);

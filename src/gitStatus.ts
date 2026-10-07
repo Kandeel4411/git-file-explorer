@@ -1,5 +1,8 @@
-import { execSync } from 'child_process';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import * as path from 'path';
+
+const execFileAsync = promisify(execFile);
 
 export interface GitChange {
   /** X column (index/staged status) */
@@ -14,16 +17,17 @@ export interface GitChange {
   color: 'modified' | 'untracked' | 'added' | 'deleted' | 'renamed' | 'conflict';
 }
 
-export function getGitChanges(repoRoot: string): GitChange[] {
+/** Runs `git status --porcelain=v1` asynchronously so the extension host never blocks. */
+export async function getGitChanges(repoRoot: string): Promise<GitChange[]> {
   try {
-    const output = execSync('git status --porcelain=v1 -uall', {
+    const { stdout } = await execFileAsync('git', ['status', '--porcelain=v1', '-uall'], {
       cwd: repoRoot,
       encoding: 'utf8',
     });
 
     const changes: GitChange[] = [];
 
-    for (const raw of output.split('\n')) {
+    for (const raw of stdout.split('\n')) {
       if (!raw.trim()) continue;
 
       const x = raw[0];
@@ -66,46 +70,16 @@ export function getGitChanges(repoRoot: string): GitChange[] {
   }
 }
 
-/** Returns only the unique top-level segments (files or dirs) that have changes. */
-export function getChangedRoots(repoRoot: string): Map<string, GitChange> {
-  const changes = getGitChanges(repoRoot);
-  const roots = new Map<string, GitChange>();
-
-  for (const change of changes) {
-    const root = change.filePath.split('/')[0];
-    if (!roots.has(root)) {
-      roots.set(root, change);
-    }
-  }
-
-  return roots;
-}
-
-/** Returns all changed paths whose first segment matches a given root name. */
-export function getChangesUnder(repoRoot: string, relDir: string): Map<string, GitChange> {
-  const changes = getGitChanges(repoRoot);
-  const map = new Map<string, GitChange>();
-
-  for (const change of changes) {
-    const normalized = change.filePath.replace(/\\/g, '/');
-    const dir = relDir.replace(/\\/g, '/');
-    if (normalized.startsWith(dir + '/') || normalized === dir) {
-      map.set(path.join(repoRoot, change.filePath), change);
-    }
-  }
-
-  return map;
-}
-
 /** Returns the set of absolute paths that are gitignored. */
-export function getIgnoredPaths(repoRoot: string): Set<string> {
+export async function getIgnoredPaths(repoRoot: string): Promise<Set<string>> {
   try {
-    const output = execSync(
-      'git ls-files --others --ignored --exclude-standard --directory',
+    const { stdout } = await execFileAsync(
+      'git',
+      ['ls-files', '--others', '--ignored', '--exclude-standard', '--directory'],
       { cwd: repoRoot, encoding: 'utf8' },
     );
     const ignored = new Set<string>();
-    for (const line of output.split('\n')) {
+    for (const line of stdout.split('\n')) {
       const trimmed = line.trim().replace(/\/$/, ''); // strip trailing slash from dirs
       if (!trimmed) continue;
       ignored.add(path.join(repoRoot, trimmed));
@@ -117,8 +91,8 @@ export function getIgnoredPaths(repoRoot: string): Set<string> {
 }
 
 /** Build a map of all changed absolute paths for quick lookup. */
-export function buildChangedPathSet(repoRoot: string): Map<string, GitChange> {
-  const changes = getGitChanges(repoRoot);
+export async function buildChangedPathSet(repoRoot: string): Promise<Map<string, GitChange>> {
+  const changes = await getGitChanges(repoRoot);
   const map = new Map<string, GitChange>();
   for (const c of changes) {
     map.set(path.join(repoRoot, c.filePath), c);

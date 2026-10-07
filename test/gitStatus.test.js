@@ -1,16 +1,21 @@
 const assert = require('assert').strict;
+const path = require('path');
 const proxyquire = require('proxyquire');
 
-function loadGitStatus(execSyncImpl) {
-  return proxyquire('../out/gitStatus', {
-    child_process: {
-      execSync: execSyncImpl,
-    },
-  });
+// handler(file, args) returns stdout string, or throws to simulate a git failure.
+function loadGitStatus(handler) {
+  const execFile = (file, args, opts, cb) => {
+    try {
+      cb(null, { stdout: handler(file, args) });
+    } catch (err) {
+      cb(err);
+    }
+  };
+  return proxyquire('../out/gitStatus', { child_process: { execFile } });
 }
 
 describe('gitStatus', () => {
-  it('parses porcelain output into badges and colors', () => {
+  it('parses porcelain output into badges and colors', async () => {
     const gitStatus = loadGitStatus(() =>
       [
         ' M src/edited.ts',
@@ -22,7 +27,7 @@ describe('gitStatus', () => {
       ].join('\n'),
     );
 
-    const changes = gitStatus.getGitChanges('/repo');
+    const changes = await gitStatus.getGitChanges('/repo');
     assert.equal(changes.length, 6);
     assert.equal(changes[0].badge, 'M');
     assert.equal(changes[1].badge, 'A');
@@ -32,7 +37,7 @@ describe('gitStatus', () => {
     assert.equal(changes[5].badge, 'U');
   });
 
-  it('badges all merge-conflict states as C', () => {
+  it('badges all merge-conflict states as C', async () => {
     const gitStatus = loadGitStatus(() =>
       [
         'DD src/both-deleted.ts',
@@ -45,7 +50,7 @@ describe('gitStatus', () => {
       ].join('\n'),
     );
 
-    const changes = gitStatus.getGitChanges('/repo');
+    const changes = await gitStatus.getGitChanges('/repo');
     assert.equal(changes.length, 7);
     for (const change of changes) {
       assert.equal(change.badge, 'C', `${change.x}${change.y} should badge as C`);
@@ -53,39 +58,34 @@ describe('gitStatus', () => {
     }
   });
 
-  it('returns empty list when git command fails', () => {
+  it('returns empty list when git command fails', async () => {
     const gitStatus = loadGitStatus(() => {
       throw new Error('git not available');
     });
-    assert.deepEqual(gitStatus.getGitChanges('/repo'), []);
+    assert.deepEqual(await gitStatus.getGitChanges('/repo'), []);
   });
 
-  it('returns unique changed roots', () => {
-    const gitStatus = loadGitStatus(() => [' M src/a.ts', ' M src/b.ts', ' M README.md'].join('\n'));
-    const roots = gitStatus.getChangedRoots('/repo');
-    assert.equal(roots.size, 2);
-    assert.ok(roots.has('src'));
-    assert.ok(roots.has('README.md'));
+  it('builds a changed path set keyed by absolute path', async () => {
+    const gitStatus = loadGitStatus(() =>
+      [' M src/a.ts', 'A  src/nested/b.ts', ' M README.md'].join('\n'),
+    );
+    const map = await gitStatus.buildChangedPathSet('/repo');
+    assert.equal(map.size, 3);
+    assert.ok(map.has(path.join('/repo', 'src/a.ts')));
+    assert.ok(map.has(path.join('/repo', 'src/nested/b.ts')));
+    assert.ok(map.has(path.join('/repo', 'README.md')));
   });
 
-  it('returns changed paths under a directory', () => {
-    const gitStatus = loadGitStatus(() => [' M src/a.ts', 'A  src/nested/b.ts', ' M other/c.ts'].join('\n'));
-    const underSrc = gitStatus.getChangesUnder('/repo', 'src');
-    assert.equal(underSrc.size, 2);
-    assert.ok(underSrc.has('/repo/src/a.ts'));
-    assert.ok(underSrc.has('/repo/src/nested/b.ts'));
-  });
-
-  it('reads ignored paths and trims directory suffixes', () => {
-    const gitStatus = loadGitStatus((command) => {
-      if (command.includes('ls-files')) {
+  it('reads ignored paths and trims directory suffixes', async () => {
+    const gitStatus = loadGitStatus((file, args) => {
+      if (args.includes('ls-files')) {
         return ['tmp/', '.cache/', 'notes.txt'].join('\n');
       }
       return '';
     });
-    const ignored = gitStatus.getIgnoredPaths('/repo');
-    assert.ok(ignored.has('/repo/tmp'));
-    assert.ok(ignored.has('/repo/.cache'));
-    assert.ok(ignored.has('/repo/notes.txt'));
+    const ignored = await gitStatus.getIgnoredPaths('/repo');
+    assert.ok(ignored.has(path.join('/repo', 'tmp')));
+    assert.ok(ignored.has(path.join('/repo', '.cache')));
+    assert.ok(ignored.has(path.join('/repo', 'notes.txt')));
   });
 });

@@ -89,12 +89,13 @@ describe('Focus directory feature', () => {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('focusing a directory hides unchanged files', () => {
+  it('focusing a directory hides unchanged files', async () => {
     const changed = new Map([
       [path.join(repoRoot, 'src', 'app.ts'), { x: 'M', y: ' ', badge: 'M', color: 'modified' }],
     ]);
     const { GitFileExplorerProvider, GitNode } = loadGitExplorer(repoRoot, changed);
     const provider = new GitFileExplorerProvider();
+    await provider.refresh();
 
     const srcNode = provider.getChildren().find((n) => n.label === 'src');
     const beforeFocus = provider.getChildren(srcNode);
@@ -106,12 +107,13 @@ describe('Focus directory feature', () => {
     assert.equal(afterFocus[0].label, 'app.ts');
   });
 
-  it('unfocusing restores all children', () => {
+  it('unfocusing restores all children', async () => {
     const changed = new Map([
       [path.join(repoRoot, 'src', 'app.ts'), { x: 'M', y: ' ', badge: 'M', color: 'modified' }],
     ]);
     const { GitFileExplorerProvider } = loadGitExplorer(repoRoot, changed);
     const provider = new GitFileExplorerProvider();
+    await provider.refresh();
 
     const srcNode = provider.getChildren().find((n) => n.label === 'src');
     const originalCount = provider.getChildren(srcNode).length;
@@ -123,12 +125,13 @@ describe('Focus directory feature', () => {
     assert.equal(restored.length, originalCount, 'should restore all children after unfocus');
   });
 
-  it('directories with changed descendants are kept visible', () => {
+  it('directories with changed descendants are kept visible', async () => {
     const changed = new Map([
       [path.join(repoRoot, 'src', 'nested', 'deep.ts'), { x: 'A', y: ' ', badge: 'A', color: 'added' }],
     ]);
     const { GitFileExplorerProvider } = loadGitExplorer(repoRoot, changed);
     const provider = new GitFileExplorerProvider();
+    await provider.refresh();
 
     const srcNode = provider.getChildren().find((n) => n.label === 'src');
     provider.focusDir(srcNode);
@@ -140,7 +143,7 @@ describe('Focus directory feature', () => {
     assert.ok(!names.includes('utils.ts'), 'unchanged file should be hidden');
   });
 
-  it('focusing with all changed files changes nothing', () => {
+  it('focusing with all changed files changes nothing', async () => {
     const changed = new Map([
       [path.join(repoRoot, 'src', 'app.ts'), { x: 'M', y: ' ', badge: 'M', color: 'modified' }],
       [path.join(repoRoot, 'src', 'utils.ts'), { x: 'M', y: ' ', badge: 'M', color: 'modified' }],
@@ -149,6 +152,7 @@ describe('Focus directory feature', () => {
     ]);
     const { GitFileExplorerProvider } = loadGitExplorer(repoRoot, changed);
     const provider = new GitFileExplorerProvider();
+    await provider.refresh();
 
     const srcNode = provider.getChildren().find((n) => n.label === 'src');
     const beforeCount = provider.getChildren(srcNode).length;
@@ -158,12 +162,13 @@ describe('Focus directory feature', () => {
     assert.equal(afterCount, beforeCount, 'all files changed — nothing should be hidden');
   });
 
-  it('contextValue switches between directory and directoryFocused', () => {
+  it('contextValue switches between directory and directoryFocused', async () => {
     const changed = new Map([
       [path.join(repoRoot, 'src', 'app.ts'), { x: 'M', y: ' ', badge: 'M', color: 'modified' }],
     ]);
     const { GitFileExplorerProvider } = loadGitExplorer(repoRoot, changed);
     const provider = new GitFileExplorerProvider();
+    await provider.refresh();
 
     let srcNode = provider.getChildren().find((n) => n.label === 'src');
     assert.equal(srcNode.contextValue, 'directory');
@@ -177,7 +182,7 @@ describe('Focus directory feature', () => {
     assert.equal(srcNode.contextValue, 'directory');
   });
 
-  it('focusing does not affect sibling directories', () => {
+  it('focusing does not affect sibling directories', async () => {
     fs.mkdirSync(path.join(repoRoot, 'lib'));
     fs.writeFileSync(path.join(repoRoot, 'lib', 'helper.ts'), '');
     fs.writeFileSync(path.join(repoRoot, 'lib', 'index.ts'), '');
@@ -188,6 +193,7 @@ describe('Focus directory feature', () => {
     ]);
     const { GitFileExplorerProvider } = loadGitExplorer(repoRoot, changed);
     const provider = new GitFileExplorerProvider();
+    await provider.refresh();
 
     const srcNode = provider.getChildren().find((n) => n.label === 'src');
     provider.focusDir(srcNode);
@@ -197,12 +203,13 @@ describe('Focus directory feature', () => {
     assert.equal(libChildren.length, 2, 'lib dir should still show all files');
   });
 
-  it('focusDir is a no-op for file nodes', () => {
+  it('focusDir is a no-op for file nodes', async () => {
     const changed = new Map([
       [path.join(repoRoot, 'README.md'), { x: 'M', y: ' ', badge: 'M', color: 'modified' }],
     ]);
     const { GitFileExplorerProvider, GitNode } = loadGitExplorer(repoRoot, changed);
     const provider = new GitFileExplorerProvider();
+    await provider.refresh();
 
     const fileNode = new GitNode('README.md', path.join(repoRoot, 'README.md'), false);
     provider.focusDir(fileNode);

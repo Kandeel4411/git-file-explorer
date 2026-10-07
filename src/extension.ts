@@ -1,11 +1,17 @@
 import * as vscode from 'vscode';
 import { GitFileExplorerProvider } from './gitFileExplorer';
+import { debounce } from './debounce';
+import { isNoisePath } from './watchFilter';
 
 export function activate(context: vscode.ExtensionContext) {
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (!workspaceRoot) return;
 
   const provider = new GitFileExplorerProvider();
+
+  // Coalesce bursts of watcher events into a single refresh, so a flurry of file
+  // changes (e.g. a tool rewriting its cache) triggers one git call, not hundreds.
+  const scheduleRefresh = debounce(() => void provider.refresh(), 300);
 
   context.subscriptions.push(
     vscode.window.createTreeView('gitFileExplorer', {
@@ -27,16 +33,19 @@ export function activate(context: vscode.ExtensionContext) {
   const gitWatcher = vscode.workspace.createFileSystemWatcher(
     new vscode.RelativePattern(workspaceRoot, '.git/index'),
   );
-  gitWatcher.onDidChange(() => provider.refresh());
-  gitWatcher.onDidCreate(() => provider.refresh());
+  gitWatcher.onDidChange(() => scheduleRefresh());
+  gitWatcher.onDidCreate(() => scheduleRefresh());
   context.subscriptions.push(gitWatcher);
 
-  // Refresh when files are created or deleted
+  // Refresh when files are created or deleted, ignoring high-churn tool/VCS dirs.
   const fsWatcher = vscode.workspace.createFileSystemWatcher(
     new vscode.RelativePattern(workspaceRoot, '**/*'),
   );
-  fsWatcher.onDidCreate(() => provider.refresh());
-  fsWatcher.onDidDelete(() => provider.refresh());
+  const onFsEvent = (uri: vscode.Uri) => {
+    if (!isNoisePath(uri.fsPath)) scheduleRefresh();
+  };
+  fsWatcher.onDidCreate(onFsEvent);
+  fsWatcher.onDidDelete(onFsEvent);
   context.subscriptions.push(fsWatcher);
 }
 

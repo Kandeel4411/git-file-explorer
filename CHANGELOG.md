@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-10-07
+
+### Fixed
+- VS Code: the explorer no longer freezes the extension host under heavy file churn.
+  Git runs asynchronously (`execFile`) and once per refresh; watcher bursts are
+  debounced (300ms); tree expansion reuses the cached status instead of re-running
+  `git status`; and high-churn directories (`.git`, `node_modules`, `.mypy_cache`,
+  `__pycache__`, `.ruff_cache`, `.pytest_cache`) no longer trigger refreshes.
+
 ## [0.1.1] - 2026-10-07
 
 ### Fixed

@@ -99,24 +99,26 @@ describe('GitFileExplorerProvider', () => {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('returns sorted root nodes (directories before files)', () => {
+  it('returns sorted root nodes (directories before files)', async () => {
     const changed = new Map([
       [path.join(repoRoot, 'README.md'), { x: 'M', y: ' ', badge: 'M', color: 'modified' }],
       [path.join(repoRoot, 'src', 'app.ts'), { x: 'M', y: ' ', badge: 'M', color: 'modified' }],
     ]);
     const { GitFileExplorerProvider } = loadGitExplorer(repoRoot, changed);
     const provider = new GitFileExplorerProvider();
+    await provider.refresh();
     const roots = provider.getChildren();
     assert.equal(roots.length, 2);
     assert.equal(roots[0].label, 'src');
     assert.equal(roots[1].label, 'README.md');
   });
 
-  it('provides file decorations using git metadata', () => {
+  it('provides file decorations using git metadata', async () => {
     const filePath = path.join(repoRoot, 'src', 'app.ts');
     const changed = new Map([[filePath, { x: 'M', y: ' ', badge: 'M', color: 'modified' }]]);
     const { GitFileExplorerProvider } = loadGitExplorer(repoRoot, changed);
     const provider = new GitFileExplorerProvider();
+    await provider.refresh();
     const deco = provider.provideFileDecoration({ fsPath: filePath });
     assert.equal(deco.badge, 'M');
     assert.equal(deco.tooltip, 'Git: M ');
@@ -132,6 +134,7 @@ describe('GitFileExplorerProvider', () => {
     loaded.vscodeMock.window.showInputBox = async () => 'new.ts';
 
     const provider = new loaded.GitFileExplorerProvider();
+    await provider.refresh();
     const srcNode = provider.getChildren().find((n) => n.label === 'src');
     await provider.newFile(srcNode);
 
@@ -149,6 +152,7 @@ describe('GitFileExplorerProvider', () => {
     loaded.vscodeMock.window.showWarningMessage = async () => 'Delete';
 
     const provider = new loaded.GitFileExplorerProvider();
+    await provider.refresh();
     const readmeNode = provider.getChildren().find((n) => n.label === 'README.md');
     await provider.renameItem(readmeNode);
     assert.ok(fs.existsSync(newPath));
@@ -168,6 +172,7 @@ describe('GitFileExplorerProvider', () => {
     ]);
     const loaded = loadGitExplorer(repoRoot, changed);
     const provider = new loaded.GitFileExplorerProvider();
+    await provider.refresh();
 
     const srcNode = provider.getChildren().find((n) => n.label === 'src');
     const targetNode = provider.getChildren(srcNode).find((n) => n.label === 'nested');
