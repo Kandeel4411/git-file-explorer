@@ -70,6 +70,10 @@ _G.vim = {
     nvim_win_get_buf = function(win)
       return win_buf[win] or 0
     end,
+    nvim_get_current_buf = function()
+      return win_buf[current_win] or 0
+    end,
+    nvim_buf_set_name = function() end,
     nvim_buf_is_valid = function(buf)
       return valid_bufs[buf] == true
     end,
@@ -292,6 +296,27 @@ add_test("hide-unchanged visibility rules", function()
   assert_true(not t.has_changed_descendant("/repo/docs"), "docs has no changed descendant")
 end)
 
+add_test("directories auto-expand when unchanged files are hidden", function()
+  reset_runtime_state()
+  mod.setup({ show_unchanged = false })
+  t.set_state({ filter_query = "", expanded = {} })
+  local dir = { name = "src", path = "/repo/src", is_dir = true }
+  assert_true(t.is_node_expanded(dir), "dir should auto-expand in changed-only mode")
+
+  local file = { name = "a.ts", path = "/repo/src/a.ts", is_dir = false }
+  assert_true(not t.is_node_expanded(file), "files are never expanded")
+end)
+
+add_test("directories stay collapsed by default in full-tree mode", function()
+  reset_runtime_state()
+  mod.setup({ show_unchanged = true })
+  t.set_state({ filter_query = "", expanded = {} })
+  local dir = { name = "src", path = "/repo/src", is_dir = true }
+  assert_true(not t.is_node_expanded(dir), "dir collapsed by default when showing full tree")
+  t.set_state({ expanded = { ["/repo/src"] = true } })
+  assert_true(t.is_node_expanded(dir), "explicitly expanded dir is expanded")
+end)
+
 add_test("show_unchanged shows every node", function()
   reset_runtime_state()
   mod.setup({ show_unchanged = true })
@@ -319,6 +344,95 @@ add_test("default toggle_unchanged keymap applied", function()
     seen[entry.lhs] = true
   end
   assert_true(seen["H"], "default toggle_unchanged keymap not applied")
+end)
+
+add_test("git_show_head returns HEAD lines or empty on error", function()
+  reset_runtime_state()
+  mod.setup()
+  t.set_state({ root = "/repo" })
+  local orig = vim.fn.systemlist
+  vim.fn.systemlist = function()
+    return { "old line 1", "old line 2" }
+  end
+  vim.v.shell_error = 0
+  local lines = t.git_show_head("src/a.ts")
+  assert_eq(#lines, 2)
+  assert_eq(lines[1], "old line 1")
+
+  vim.v.shell_error = 1
+  local none = t.git_show_head("src/new.ts")
+  assert_eq(#none, 0)
+
+  vim.fn.systemlist = orig
+  vim.v.shell_error = 0
+end)
+
+add_test("toggle_diff flips diff_mode", function()
+  reset_runtime_state()
+  mod.setup()
+  t.set_state({ diff_mode = false, buf = -1 })
+  assert_eq(t.is_diff_mode(), false)
+  t.toggle_diff()
+  assert_eq(t.is_diff_mode(), true)
+  t.toggle_diff()
+  assert_eq(t.is_diff_mode(), false)
+end)
+
+add_test("open_diff_in_editor fills baseline buffer with HEAD content", function()
+  reset_runtime_state()
+  mod.setup()
+  t.set_state({ root = "/repo", buf = 2, win = 1 })
+  local orig = vim.fn.systemlist
+  vim.fn.systemlist = function()
+    return { "committed a", "committed b" }
+  end
+  vim.v.shell_error = 0
+
+  local base = t.open_diff_in_editor("/repo/src/a.ts")
+  local lines = buffer_lines[base]
+  assert_true(lines ~= nil, "baseline buffer should be created")
+  assert_eq(lines[1], "committed a")
+  assert_eq(lines[2], "committed b")
+
+  vim.fn.systemlist = orig
+end)
+
+add_test("diff view closes the previous baseline window instead of stacking", function()
+  reset_runtime_state()
+  mod.setup()
+  t.set_state({ root = "/repo", buf = 2, win = 3 })
+  local orig = vim.fn.systemlist
+  vim.fn.systemlist = function()
+    return { "x" }
+  end
+  vim.v.shell_error = 0
+
+  t.open_diff_in_editor("/repo/a.txt")
+  local first_base = t.get_diff_base_win()
+  assert_true(first_base ~= nil, "first diff should track a baseline window")
+
+  t.open_diff_in_editor("/repo/b.txt")
+  local closed_first = false
+  for _, w in ipairs(closed_windows) do
+    if w == first_base then
+      closed_first = true
+    end
+  end
+  assert_true(closed_first, "opening a second diff should close the first baseline window")
+
+  vim.fn.systemlist = orig
+end)
+
+add_test("default toggle_diff keymap applied", function()
+  reset_runtime_state()
+  mod.setup()
+  t.set_state({ win = -1, buf = -1 })
+  mod.open()
+  local seen = {}
+  for _, entry in ipairs(mapped_keys) do
+    seen[entry.lhs] = true
+  end
+  assert_true(seen["D"], "default toggle_diff keymap not applied")
 end)
 
 add_test("highlight selectors map status and change state", function()

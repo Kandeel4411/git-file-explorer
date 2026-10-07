@@ -9,6 +9,8 @@ local state = {
   expanded = {},
   line_nodes = {},
   filter_query = "",
+  diff_mode = false,
+  diff_base_win = nil,
   dir_cache = {},
   ignored_cache = {},
   ignored_paths = {},
@@ -29,6 +31,7 @@ local defaults = {
     delete = "d",
     refresh = "R",
     toggle_unchanged = "H",
+    toggle_diff = "D",
     close = "q",
   },
 }
@@ -340,6 +343,60 @@ local function open_path_in_editor(path)
   vim.cmd("edit " .. vim.fn.fnameescape(path))
 end
 
+-- Returns the committed (HEAD) contents of a file as lines, or an empty table
+-- when the file has no committed version (untracked/added) or git fails.
+local function git_show_head(relpath)
+  local out = vim.fn.systemlist({ "git", "-C", state.root, "show", "HEAD:" .. relpath })
+  if vim.v.shell_error ~= 0 then
+    return {}
+  end
+  return out
+end
+
+-- Closes the baseline window from a previous diff so a new one does not stack on top.
+local function clear_diff()
+  if state.diff_base_win and vim.api.nvim_win_is_valid(state.diff_base_win) then
+    pcall(vim.api.nvim_win_close, state.diff_base_win, true)
+  end
+  state.diff_base_win = nil
+end
+
+-- Opens a side-by-side diff: HEAD version (left) against the working file (right),
+-- both in diff mode. New files show an empty left pane. Returns the baseline buffer.
+local function open_diff_in_editor(path)
+  clear_diff()
+  local editor_win = find_editor_win()
+  if editor_win then
+    vim.api.nvim_set_current_win(editor_win)
+    state.prev_win = editor_win
+  end
+  vim.cmd("diffoff!")
+  vim.cmd("edit " .. vim.fn.fnameescape(path))
+  local work_buf = vim.api.nvim_get_current_buf()
+  local filetype = vim.bo[work_buf].filetype
+
+  local rel = to_relpath(path)
+  local head_lines = git_show_head(rel)
+
+  vim.cmd("leftabove vsplit")
+  local base_buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_lines(base_buf, 0, -1, false, head_lines)
+  vim.bo[base_buf].buftype = "nofile"
+  vim.bo[base_buf].bufhidden = "wipe"
+  vim.bo[base_buf].swapfile = false
+  vim.bo[base_buf].modifiable = false
+  vim.bo[base_buf].filetype = filetype
+  vim.api.nvim_buf_set_name(base_buf, rel .. " (HEAD)")
+  vim.api.nvim_win_set_buf(0, base_buf)
+  state.diff_base_win = vim.api.nvim_get_current_win()
+
+  vim.cmd("diffthis")
+  vim.cmd("wincmd l")
+  vim.cmd("diffthis")
+
+  return base_buf
+end
+
 local function ensure_window()
   if state.win and vim.api.nvim_win_is_valid(state.win) then
     return
@@ -394,6 +451,15 @@ local function should_show_node(node)
   return true
 end
 
+-- Directories auto-expand while filtering or while unchanged files are hidden
+-- (changed-only view), so the changed paths are visible without manual expansion.
+local function is_node_expanded(node)
+  if not node.is_dir then
+    return false
+  end
+  return state.expanded[node.path] == true or has_filter() or not config.show_unchanged
+end
+
 local function render()
   if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
     return
@@ -407,7 +473,7 @@ local function render()
     local node_lines = {}
     local node_entries = {}
     local indent = string.rep("  ", depth)
-    local is_expanded = node.is_dir and (state.expanded[node.path] or has_filter())
+    local is_expanded = is_node_expanded(node)
     local marker = node.is_dir and (is_expanded and "▾ " or "▸ ") or "  "
     local change = state.changed[node.path]
     local badge = change and (" [" .. change.badge .. "]") or ""
@@ -437,6 +503,9 @@ local function render()
   local title = "Git Scope Explorer"
   if not config.show_unchanged then
     title = title .. " [changed]"
+  end
+  if state.diff_mode then
+    title = title .. " [diff]"
   end
   if has_filter() then
     title = title .. " [/" .. state.filter_query .. "]"
@@ -557,7 +626,11 @@ local function open_node()
     render()
     return
   end
-  open_path_in_editor(node.path)
+  if state.diff_mode then
+    open_diff_in_editor(node.path)
+  else
+    open_path_in_editor(node.path)
+  end
 end
 
 local function mouse_open_node()
@@ -731,6 +804,14 @@ local function toggle_unchanged()
   render()
 end
 
+local function toggle_diff()
+  state.diff_mode = not state.diff_mode
+  if not state.diff_mode then
+    clear_diff()
+  end
+  render()
+end
+
 local function map(lhs, rhs)
   vim.keymap.set("n", lhs, rhs, { buffer = state.buf, silent = true, nowait = true })
 end
@@ -750,6 +831,7 @@ local function apply_keymaps()
   map(km.delete, delete_item)
   map(km.refresh, render)
   map(km.toggle_unchanged, toggle_unchanged)
+  map(km.toggle_diff, toggle_diff)
   map(km.close, close_win)
 end
 
@@ -792,7 +874,17 @@ M._test = {
   is_git_ignored = is_git_ignored,
   has_changed_descendant = has_changed_descendant,
   should_show_node = should_show_node,
+  is_node_expanded = is_node_expanded,
   toggle_unchanged = toggle_unchanged,
+  git_show_head = git_show_head,
+  open_diff_in_editor = open_diff_in_editor,
+  toggle_diff = toggle_diff,
+  is_diff_mode = function()
+    return state.diff_mode
+  end,
+  get_diff_base_win = function()
+    return state.diff_base_win
+  end,
   get_config = function()
     return config
   end,

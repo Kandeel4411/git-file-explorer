@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2026-10-07
+
+### Added
+- Neovim: optional diff view (**experimental**). Press `D` (`toggle_diff` keymap) to toggle a mode where
+  selecting a file opens a side-by-side diff of its committed HEAD version against the
+  working copy, in Neovim's native diff mode. Untracked/added files show an empty
+  baseline pane. Opening another file in diff mode replaces the previous diff rather
+  than stacking new split windows.
+
+### Changed
+- Neovim: in the changed-only view (unchanged files hidden), directories now auto-expand
+  so changed files are visible without manually expanding each folder.
+
 ## [0.0.9] - 2026-10-05
 
 ### Added

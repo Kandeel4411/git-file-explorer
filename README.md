@@ -149,11 +149,25 @@ Then run `:Lazy sync` and restart Neovim.
 | `d`         | Delete                     |
 | `R`         | Refresh                    |
 | `H`         | Toggle unchanged files     |
+| `D`         | Toggle diff view           |
 | `q`         | Close the window           |
 
 By default the Neovim explorer hides unchanged files, showing only git-changed files
-and the directories that contain them (the title shows `[changed]`). Press `H` to toggle
-the full tree on and off.
+and the directories that contain them (the title shows `[changed]`). In this view
+directories auto-expand, so every changed file is visible without drilling in. Press `H`
+to toggle the full tree on and off.
+
+### Diff view (experimental)
+
+> **Experimental:** behavior and defaults may change in future releases.
+
+Press `D` to toggle diff view (the title shows `[diff]`). While it is on, selecting a
+file opens a side-by-side diff instead of the plain file — the committed **HEAD** version
+on the left, your working copy on the right, both in Neovim's native diff mode — so you
+can review changes the way you would in VS Code. Files with no committed version
+(untracked or newly added) show an empty left pane. Opening another file replaces the
+current diff rather than stacking more split windows. Press `D` again to return to
+opening files normally.
 
 Keymaps and behavior are configurable — pass options to `setup()`:
 
@@ -162,6 +176,7 @@ require("git_file_explorer").setup({
   show_unchanged = false, -- default; set true to show the whole tree
   keymaps = {
     toggle_unchanged = "H",
+    toggle_diff = "D",
     -- ...override any other key
   },
 })
