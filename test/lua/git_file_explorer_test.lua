@@ -310,6 +310,24 @@ add_test("opening seeds ancestor directories of changed files as expanded", func
   assert_true(not t.is_node_expanded({ path = "/repo/src/a.ts", is_dir = false }), "files are never expanded")
 end)
 
+add_test("seed_expanded preserves folders the user already collapsed", function()
+  reset_runtime_state()
+  mod.setup({ show_unchanged = false })
+  t.set_state({ root = "/repo", filter_query = "", expanded = { ["/repo/src"] = false } })
+  t.seed_expanded({
+    ["/repo/src/a.ts"] = { badge = "M" },
+    ["/repo/lib/b.ts"] = { badge = "M" },
+  })
+  assert_true(
+    not t.is_node_expanded({ path = "/repo/src", is_dir = true }),
+    "a collapsed folder stays collapsed when reseeded"
+  )
+  assert_true(
+    t.is_node_expanded({ path = "/repo/lib", is_dir = true }),
+    "a newly changed folder is still seeded expanded"
+  )
+end)
+
 add_test("collapse is respected and not overridden by the mode", function()
   reset_runtime_state()
   mod.setup({ show_unchanged = false })

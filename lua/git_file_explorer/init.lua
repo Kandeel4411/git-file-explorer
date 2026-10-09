@@ -467,7 +467,11 @@ local function seed_expanded(changed)
   for abs in pairs(changed) do
     local dir = vim.fs.dirname(abs)
     while dir and dir ~= state.root and dir ~= "/" and dir ~= "." do
-      state.expanded[dir] = true
+      -- Only seed folders the user has not already expanded or collapsed, so a
+      -- collapse survives closing and reopening the window.
+      if state.expanded[dir] == nil then
+        state.expanded[dir] = true
+      end
       local parent = vim.fs.dirname(dir)
       if parent == dir then
         break
@@ -863,7 +867,6 @@ function M.open()
   state.filter_query = ""
   state.dir_cache = {}
   state.ignored_cache = {}
-  state.expanded = {}
   state.ignored_paths = load_ignored_paths(state.root)
   state.changed = parse_changed(state.root)
   seed_expanded(state.changed)
